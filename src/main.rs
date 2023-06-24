@@ -1,13 +1,9 @@
 use std::env;
-use std::fs;
-use std::io::Write;
-use std::thread;
-use std::time::Duration;
 
 use discord::model::ChannelId;
 use discord::model::RoleId;
 use discord::model::ServerId;
-use discord::model::{Event, Message};
+use discord::model::Event;
 use discord::Discord;
 use dotenv::dotenv;
 

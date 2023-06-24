@@ -9,7 +9,9 @@ use discord::Discord;
 use super::tester;
 use super::EnvInfo;
 
-const FILE_EXTENSIONS: [&str; 9] = ["rs", "cpp", "cc", "c++", "c", "cxx", "lua", "py", "js"];
+const FILE_EXTENSIONS: [&str; 11] = [
+    "rs", "cpp", "cc", "c++", "c", "cxx", "lua", "py", "js", "ts", "nim",
+];
 
 extern "C" {
     fn system(command: *mut u8) -> i32;
@@ -227,30 +229,6 @@ pub fn handle_message(discord: &Discord, message: Message, env_info: EnvInfo) {
                     .unwrap();
             }
 
-            // "purge" => {
-            //     if author.id.0 != 873410122616037456 {
-            //         return;
-            //     }
-
-            //     if let Some(number) = split.next() {
-            //         discord
-            //             .delete_messages(
-            //                 channel_id,
-            //                 &discord
-            //                     .get_messages(
-            //                         channel_id,
-            //                         discord::GetMessages::Before(message.id),
-            //                         Some(number.parse().unwrap_or(0)),
-            //                     )
-            //                     .unwrap()
-            //                     .into_iter()
-            //                     .map(|i| i.id)
-            //                     .collect::<Vec<_>>(),
-            //             )
-            //             .expect("failed to delete messages");
-            //     }
-            // }
-
             "remove" => {
                 if let Some(id) = split.next() {
                     if let Ok(id) = id.parse::<u64>() {
@@ -321,46 +299,45 @@ pub fn handle_message(discord: &Discord, message: Message, env_info: EnvInfo) {
                                 get_lang_emoji_name(file_extension),
                                 user_id.parse().unwrap(),
                                 solution_length,
-                                match file_extension {
-                                    "rs" => {
-                                        exec(&format!("rustc ./sub/{file_name} -O -o main"));
-                                        tester::test("./main", &tester_file)
-                                    }
+                                tester::test(
+                                    &match file_extension {
+                                        "rs" => {
+                                            exec(&format!("rustc ./sub/{file_name} -O -o main"));
+                                            "./main".to_string()
+                                        }
 
-                                    "cpp" | "cc" | "cxx" | "c++" => {
-                                        exec(&format!("g++ ./sub/{file_name} -O2 -o main"));
-                                        tester::test("./main", &tester_file)
-                                    }
+                                        "cpp" | "cc" | "cxx" | "c++" => {
+                                            exec(&format!(
+                                                "g++ -std=c++20 ./sub/{file_name} -O2 -o main"
+                                            ));
+                                            "./main".to_string()
+                                        }
 
-                                    "c" => {
-                                        exec(&format!("gcc ./sub/{file_name} -O2 -o main"));
-                                        tester::test("./main", &tester_file)
-                                    }
+                                        "c" => {
+                                            exec(&format!(
+                                                "gcc -std=c17 ./sub/{file_name} -O2 -o main"
+                                            ));
+                                            "./main".to_string()
+                                        }
 
-                                    "js" => tester::test(
-                                        &format!("node ./sub/{file_name}"),
-                                        &tester_file,
-                                    ),
+                                        "js" | "ts" => format!("node ./sub/{file_name}"),
+                                        "py" => format!("python3 ./sub/{file_name}"),
+                                        "lua" => format!("lua ./sub/{file_name}"),
+                                        "nim" => format!("nim c -r ./sub/{file_name}"),
 
-                                    "py" => tester::test(
-                                        &format!("python3 ./sub/{file_name}"),
-                                        &tester_file,
-                                    ),
-
-                                    "lua" => tester::test(
-                                        &format!("lua ./sub/{file_name}"),
-                                        &tester_file,
-                                    ),
-
-                                    _ => unreachable!("what file extension is this???"),
-                                },
+                                        _ => unreachable!("what file extension is this???"),
+                                    },
+                                    &tester_file,
+                                ),
                             ));
                         });
 
                     let passed = result.iter().filter(|i| i.3.is_some()).collect::<Vec<_>>();
 
                     for (_, id, _, _) in passed.iter() {
-                        discord.add_member_role(server_id, UserId(*id), winner_role_id);
+                        discord
+                            .add_member_role(server_id, UserId(*id), winner_role_id)
+                            .unwrap();
                     }
 
                     let mut fastest_solutions = passed
@@ -443,9 +420,10 @@ fn get_lang_emoji_name(extension: &str) -> &'static str {
         "rs" => "<:rust:1121679837657038928>",
         "cpp" | "cc" | "cxx" | "c++" => "<:cpp:1121679809005748305>",
         "c" => "<:clang:1121679805960683530>",
-        "js" => "<:js:1121679814278004776>",
+        "js" | "ts" => "<:js:1121679814278004776>",
         "py" => "<:python:1121679833181732985>",
         "lua" => "<:lua:1121679825694892162>",
+        "nim" => "<:nim:1121679830371536968>",
         _ => unreachable!("what file extension is this???"),
     }
 }
